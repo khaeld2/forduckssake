@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦆 For Ducks Sake</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background-color: #ff00ff;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin: 40px 0 20px;
+        }
+        .widget {
+            width: calc(100% - 40px);
+            margin: 0 auto;
+            min-height: 200px;
+            background-color: #ffff00;
+            border: 5px dashed #0000ff;
+            padding: 30px;
+            transform: rotate(2deg);
+            box-shadow: 0 0 15px rgba(0,0,0,0.4);
+            margin-bottom: 20px;
+        }
+        .widget:nth-child(even) {
+            transform: rotate(-2deg);
+        }
+        h1, h2 {
+            text-decoration: underline wavy;
+        }
+        button {
+            background-color: #00ffff;
+            border: 3px solid #ff0000;
+            padding: 10px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div style="display: flex; align-items: center; gap: 20px; margin: 20px 0;">
+        <img src="logo.svg" alt="For Ducks Sake Logo" style="width: 100px; height: auto; transform: rotate(5deg);">
+        <div>
+            <h1>For Ducks Sake</h1>
+            <p>A chaotic duck-themed dashboard with weather, notes, and news - because why not?</p>
+        </div>
+        <button onclick="toggleDuckMode()" style="margin-left: auto; transform: rotate(3deg); background-color: #ff9900; border: 3px dashed #000;">
+            🦆 Duck Mode
+        </button>
+    </div>
+    <br>
+    <div class="container">
+        <div class="widget" id="weather">
+            <h2>Weather</h2>
+            <div id="weather-data">Loading weather...</div>
+            <input type="text" id="city-input" placeholder="Enter city">
+            <button onclick="getWeather()">Get Weather</button>
+        </div>
+        
+        <div class="widget" id="notes">
+            <h2>Notes</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <button onclick="insertMarkdown('## ')" title="Heading">H2</button>
+                <button onclick="insertMarkdown('* ')" title="List">•</button>
+                <button onclick="insertMarkdown('**bold**')" title="Bold">B</button>
+                <button onclick="insertMarkdown('*italic*')" title="Italic">I</button>
+                <button onclick="insertMarkdown('[link](url)')" title="Link">🔗</button>
+                <button onclick="togglePreview()" id="preview-toggle">Preview</button>
+            </div>
+            <textarea id="note-input" rows="5" style="width: 100%; display: block;"></textarea>
+            <div id="note-preview" style="display: none; width: 100%; min-height: 100px; border: 2px dashed #ff9900; padding: 10px; margin-bottom: 10px;"></div>
+            <button onclick="saveNote()">Save Note</button>
+            <button onclick="exportNote()">Export All Notes</button>
+            <button onclick="clearAllNotes()">Clear All Notes</button>
+            <div id="saved-notes"></div>
+        </div>
+        
+        <div class="widget" id="news">
+            <h2>News</h2>
+            <div id="news-data">Loading news...</div>
+            <button onclick="getNews()">Refresh News</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+  // Ensure marked is properly initialized
+  marked.setOptions({
+    breaks: true,
+    gfm: true
+  });
+</script>
+
+    <script>
+        // Weather functionality
+        async function getWeather() {
+            const city = document.getElementById('city-input').value;
+            if (!city) {
+                document.getElementById('weather-data').innerHTML = 'Please enter a city name';
+                return;
+            }
+            try {
+                // Get coordinates first
+                const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1`);
+                const geoData = await geoResponse.json();
+                if (!geoData.results || geoData.results.length === 0) {
+                    throw new Error('City not found');
+                }
+                const {latitude, longitude} = geoData.results[0];
+                
+                // Get weather data
+                const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`);
+                const weatherData = await weatherResponse.json();
+                
+                // Current weather
+                const current = weatherData.current;
+                const currentTempC = current.temperature_2m;
+                const currentTempF = (currentTempC * 9/5) + 32;
+                const windSpeed = current.wind_speed_10m;
+                const windDirection = current.wind_direction_10m;
+                
+                // Weekly forecast
+                let forecastHTML = '';
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(weatherData.daily.time[i]);
+                    const dayName = date.toLocaleDateString('en-US', {weekday: 'short'});
+                    const maxTemp = weatherData.daily.temperature_2m_max[i];
+                    const minTemp = weatherData.daily.temperature_2m_min[i];
+                    forecastHTML += `<div>${dayName}: ${maxTemp}°C/${(maxTemp * 9/5 + 32).toFixed(1)}°F (${minTemp}°C/${(minTemp * 9/5 + 32).toFixed(1)}°F)</div>`;
+                }
+                
+                document.getElementById('weather-data').innerHTML = 
+                    `<div style="margin-bottom: 10px;">
+                        <strong>Current Weather in ${city}:</strong><br>
+                        ${currentTempC.toFixed(1)}°C / ${currentTempF.toFixed(1)}°F (${getSarcasticDescription(currentTempC, current.weather_code)})<br>
+                        Wind: ${windSpeed} km/h from ${windDirection}° (${getWindDescription(windSpeed)})<br>
+                        Humidity: ${current.relative_humidity_2m}% (${getHumidityDescription(current.relative_humidity_2m)})
+                    </div>
+                    <div>
+                        <strong>7-Day Forecast:</strong><br>
+                        ${forecastHTML}
+                    </div>`;
+            } catch (error) {
+                document.getElementById('weather-data').innerHTML = 
+                    `Failed to get weather: ${error.message}`;
+            }
+        }
+        
+        // Notes functionality
+        function togglePreview() {
+            const preview = document.getElementById('note-preview');
+            const textarea = document.getElementById('note-input');
+            const toggleBtn = document.getElementById('preview-toggle');
+            
+            if (preview.style.display === 'none') {
+                try {
+                    preview.innerHTML = marked.parse(textarea.value);
+                    preview.style.display = 'block';
+                    textarea.style.display = 'none';
+                    toggleBtn.textContent = 'Edit';
+                } catch (e) {
+                    alert('Markdown parsing error: ' + e.message);
+                }
+            } else {
+                preview.style.display = 'none';
+                textarea.style.display = 'block';
+                toggleBtn.textContent = 'Preview';
+            }
+        }
+    
+        
+        function insertMarkdown(syntax) {
+            const textarea = document.getElementById('note-input');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selectedText = textarea.value.substring(start, end);
+            const beforeText = textarea.value.substring(0, start);
+            const afterText = textarea.value.substring(end);
+            
+            textarea.value = beforeText + syntax + selectedText + afterText;
+            textarea.focus();
+            textarea.setSelectionRange(start + syntax.length, start + syntax.length + selectedText.length);
+        }
+        
+        function clearAllNotes() {
+            localStorage.removeItem('ducks-sake-notes');
+            document.getElementById('saved-notes').innerHTML = '';
+        }
+        
+        function removeNote(index) {
+            let notes = JSON.parse(localStorage.getItem('ducks-sake-notes') || '[]');
+            notes.splice(index, 1);
+            localStorage.setItem('ducks-sake-notes', JSON.stringify(notes));
+            
+            let notesHTML = '';
+            notes.forEach((n, i) => {
+                notesHTML += `<div style="margin-bottom: 15px; border-bottom: 2px dashed #0000ff; padding-bottom: 10px;">
+                    <p>${n}</p>
+                    <button onclick="exportNote(${i})">Export Note ${i+1}</button>
+                    <button onclick="removeNote(${i})">Remove Note</button>
+                </div>`;
+            });
+            document.getElementById('saved-notes').innerHTML = notesHTML;
+        }
+        
+        // Weather descriptions
+        function getSarcasticDescription(tempC, weatherCode) {
+            if (tempC < 0) return 'For ducks sake, are you trying to freeze your ducks off?';
+            if (tempC < 10) return 'Duck sweater weather - ducking cold out there!';
+            if (tempC < 20) return 'Perfect for a duck picnic, what the duck are you waiting for?';
+            if (tempC < 30) return 'Ducks might need sunscreen - ducking hot!';
+            return 'Ducks are melting like ice cream - for ducks sake!';
+        }
+        
+        function getWindDescription(speed) {
+            if (speed < 5) return 'Barely enough to ruffle feathers - ducking calm!';
+            if (speed < 15) return 'Ducks might need to lean into it - what the duck?';
+            if (speed < 30) return 'Duck flying lessons included - for ducks sake!';
+            return 'Duck tornado warning - ducking windy!';
+        }
+        
+        function getHumidityDescription(humidity) {
+            if (humidity < 30) return 'Ducks getting thirsty - ducking dry!';
+            if (humidity < 60) return 'Comfortable for ducks - what the duck?';
+            return 'Ducks might grow gills soon - for ducks sake!';
+        }
+        function saveNote() {
+            const note = document.getElementById('note-input').value;
+            let notes = JSON.parse(localStorage.getItem('ducks-sake-notes') || '[]');
+            notes.push(note);
+            localStorage.setItem('ducks-sake-notes', JSON.stringify(notes));
+            
+            let notesHTML = '';
+            notes.forEach((n, i) => {
+                notesHTML += `<div style="margin-bottom: 15px; border-bottom: 2px dashed #0000ff; padding-bottom: 10px;">
+                    <p>${n}</p>
+                    <button onclick="exportNote(${i})">Export Note ${i+1}</button>
+                    <button onclick="removeNote(${i})">Remove Note</button>
+                </div>`;
+            });
+            document.getElementById('saved-notes').innerHTML = notesHTML;
+        }
+        
+        function exportNote(index = null) {
+            const notes = JSON.parse(localStorage.getItem('ducks-sake-notes') || '[]');
+            const note = index !== null ? notes[index] : notes.join('\n\n---\n\n');
+            const blob = new Blob([note], {type: 'text/plain'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            a.download = index !== null 
+                ? `your_emotional_dump_(${year}_version_final_${month}${day}_${hours}${minutes}).txt` 
+                : `all_your_problems_(${year}_edition_final_final).txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Duck Mode functionality
+        function toggleDuckMode() {
+            document.body.classList.toggle('duck-dark-mode');
+            const widgets = document.querySelectorAll('.widget');
+            const buttons = document.querySelectorAll('button');
+            const footer = document.querySelector('footer');
+            
+            if (document.body.classList.contains('duck-dark-mode')) {
+                // Dark mode styles
+                document.body.style.backgroundColor = '#222222';
+                document.body.style.color = '#ffffff';
+                widgets.forEach(widget => {
+                    widget.style.backgroundColor = '#333333';
+                    widget.style.borderColor = '#ff9900';
+                });
+                buttons.forEach(btn => {
+                    btn.style.backgroundColor = '#ff9900';
+                    btn.style.borderColor = '#ffffff';
+                    btn.style.color = '#000000';
+                });
+                footer.style.backgroundColor = '#333333';
+                footer.style.borderColor = '#ff9900';
+                // Update news links color for dark mode
+                document.querySelectorAll('#news-data a').forEach(link => {
+                    link.style.color = '#ff9900';
+                });
+                document.querySelectorAll('footer a').forEach(link => {
+                    link.style.color = '#ff9900';
+                });
+                document.querySelectorAll('#news-data div[style*="border-bottom"]').forEach(div => {
+                    div.style.borderBottom = '1px dashed #ff9900';
+                });
+                // Update note preview border color for dark mode
+                document.getElementById('note-preview').style.borderColor = '#ff9900';
+            } else {
+                // Light mode styles
+                document.body.style.backgroundColor = '#ff00ff';
+                document.body.style.color = '#00ff00';
+                widgets.forEach(widget => {
+                    widget.style.backgroundColor = '#ffff00';
+                    widget.style.borderColor = '#0000ff';
+                });
+                buttons.forEach(btn => {
+                    btn.style.backgroundColor = '#00ffff';
+                    btn.style.borderColor = '#ff0000';
+                    btn.style.color = '#000000';
+                });
+                footer.style.backgroundColor = '#ffff00';
+                footer.style.borderColor = '#ff00ff';
+            }
+        }
+
+        // Load saved note on page load
+        window.onload = function() {
+            const savedNotes = JSON.parse(localStorage.getItem('ducks-sake-notes') || '[]');
+            if (savedNotes.length > 0) {
+                let notesHTML = '';
+                savedNotes.forEach((n, i) => {
+                    notesHTML += `<div style="margin-bottom: 15px; border-bottom: 2px dashed #0000ff; padding-bottom: 10px;">
+                        <p>${marked.parse(n)}</p>
+                        <button onclick="exportNote(${i})">Export Note ${i+1}</button>
+                        <button onclick="removeNote(${i})">Remove Note</button>
+                    </div>`;
+                });
+                document.getElementById('saved-notes').innerHTML = notesHTML;
+            }
+        };
+        
+        // News functionality
+        async function getNews(category = 'news') {
+            try {
+                const response = await fetch(`https://www.reddit.com/r/${category}/top.json?limit=5`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                
+                if (!data || !data.data || !data.data.children) {
+                    throw new Error('Invalid Reddit API response');
+                }
+                
+                let newsHTML = '<div style="margin-bottom: 10px;">' +
+                    '<select id="news-category" onchange="getNews(this.value)">' +
+                    '<option value="news">General News</option>' +
+                    '<option value="worldnews">World News</option>' +
+                    '<option value="technology">Technology</option>' +
+                    '<option value="science">Science</option>' +
+                    '<option value="sports">Sports</option>' +
+                    '</select>' +
+                    '</div>';
+                
+                if (data.data.children.length === 0) {
+                    newsHTML += '<div>No news found. Try another category!</div>';
+                } else {
+                    data.data.children.slice(0, 5).forEach(post => {
+                        if (post.data && post.data.title && post.data.permalink) {
+                            newsHTML += `<div style="margin-bottom: 15px; border-bottom: 1px dashed #0000ff; padding-bottom: 10px;">` +
+                                `<a href="https://reddit.com${post.data.permalink}" target="_blank">${post.data.title}</a>` +
+                                `</div>`;
+                        }
+                    });
+                }
+                document.getElementById('news-data').innerHTML = newsHTML;
+            } catch (error) {
+                document.getElementById('news-data').innerHTML = 
+                    'Failed to load news: ' + error.message;
+                console.error('News loading error:', error);
+            }
+        }
+        
+        // Initial load
+        getNews();
+    </script>
+
+<footer style="text-align: center; margin-top: 50px; transform: rotate(-2deg); background-color: #ffff00; border: 3px dotted #ff00ff; padding: 20px; font-size: 0.8em;">
+    <div style="margin-bottom: 10px;">
+        <strong>© <script>document.write(new Date().getFullYear())</script> For Ducks Sake - All Rights Reserved (Maybe?)</strong><br>
+        <span style="font-style: italic;">This chaotic masterpiece was created by Khaled Eldahshan while questioning his life choices, with the help of DeepSeek-V3-0324.</span>
+    </div>
+    <div style="display: flex; justify-content: center; gap: 20px;">
+        <a href="https://khaeld.netlify.app" target="_blank" style="color: #ff0000; text-decoration: underline wavy;">Portfolio</a>
+        <a href="https://x.com/khaeld90s" target="_blank" style="color: #0000ff; text-decoration: underline dotted; transform: rotate(-2deg);"><span style="font-size: 1.2em; font-weight: bold;">𝕏</span></a>
+    </div>
+</footer>
+
+</body>
+</html>

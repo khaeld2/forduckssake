@@ -1,0 +1,13 @@
+{
+  "name": "ducks-sake",
+  "version": "1.0.0",
+  "description": "A chaotic webapp with weather, notes, and news",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vite": "^5.0.0"
+  }
+}

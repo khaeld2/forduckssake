@@ -19,12 +19,12 @@ body {
     background-color: #ffff00;
     border: 5px dashed #0000ff;
     padding: 30px;
-    transform: rotate(2deg);
+    transform: rotate(3deg);
     box-shadow: 0 0 15px rgba(0,0,0,0.4);
     margin-bottom: 20px;
 }
 .widget:nth-child(even) {
-    transform: rotate(-2deg);
+    transform: rotate(-3deg);
 }
 h1, h2 {
     text-decoration: underline wavy;
@@ -65,28 +65,52 @@ button {
     margin-bottom: 15px;
 }
 
+.news-buttons-container {
+    display: flex;
+    gap: 15px;
+    padding: 10px 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.news-btn {
+    transform: rotate(2deg);
+    margin: 5px;
+    padding: 8px 15px;
+}
+
+.news-btn:nth-child(even) {
+    transform: rotate(-2deg);
+}
+
 .news-list {
-    list-style: none; /* Remove default bullet points */
+    list-style: none;
     padding: 0;
 }
 
 .news-item {
-    padding: 10px;
-    margin-bottom: 15px;
-    border-bottom: 2px dashed #0000ff; /* Default border */
-    transition: transform 0.2s ease-in-out;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 3px dashed #0000ff;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 0, 0.1);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 1.94);
+    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.1);
+    transform: rotate(3deg);
 }
 
 .news-item:hover {
-    transform: scale(1.02) rotate(1deg); /* Subtle hover effect */
+    transform: scale(1.02) rotate(5deg); /* Enhanced hover effect */
 }
 
 .news-title {
     font-weight: bold;
     display: block;
-    margin-bottom: 5px;
-    color: #0000ff; /* Default link color */
+    margin-bottom: 8px;
+    color: #0000ff;
     text-decoration: none;
+    font-size: 1.1em;
+    transition: transform 0.2s ease-in-out;
 }
 
 .news-title:hover {
@@ -107,7 +131,9 @@ button {
 
 /* Dark Mode adjustments for News */
 body.duck-dark-mode .news-item {
-    border-bottom-color: #ff9900;
+    border-color: #ff9900;
+    background-color: rgba(255, 153, 0, 0.15);
+    box-shadow: 3px 3px 0 rgba(255, 255, 255, 0.1);
 }
 
 body.duck-dark-mode .news-title {

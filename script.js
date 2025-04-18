@@ -97,6 +97,19 @@ function insertMarkdown(syntax) {
 function clearAllNotes() {
     localStorage.removeItem('ducks-sake-notes');
     document.getElementById('saved-notes').innerHTML = '';
+    document.getElementById('note-input').value = '';
+    // Force reset preview state
+    const preview = document.getElementById('note-preview');
+    const textarea = document.getElementById('note-input');
+    const toggleBtn = document.getElementById('preview-toggle');
+    preview.style.display = 'none';
+    textarea.style.display = 'block';
+    toggleBtn.textContent = 'Preview';
+    // Refresh Markdown parser state
+    marked.setOptions({
+        breaks: true,
+        gfm: true
+    });
 }
 
 function removeNote(index) {
@@ -106,11 +119,13 @@ function removeNote(index) {
     
     let notesHTML = '';
     notes.forEach((n, i) => {
-        notesHTML += `<div style="margin-bottom: 15px; border-bottom: 2px dashed #0000ff; padding-bottom: 10px;">
-            <p>${n}</p>
-            <button onclick="exportNote(${i})">Export Note ${i+1}</button>
-            <button onclick="removeNote(${i})">Remove Note</button>
-        </div>`;
+        const rawNote = n;
+const parsedNote = (() => { try { return marked.parse(rawNote) } catch(e) { return rawNote } })();
+            notesHTML += `<div style="margin-bottom: 15px; border-bottom: 2px dashed #0000ff; padding-bottom: 10px;">
+                <div>${parsedNote}</div>
+                <button onclick="exportNote(${i})">Export Note ${i+1}</button>
+                <button onclick="removeNote(${i})">Remove Note</button>
+            </div>`;
     });
     document.getElementById('saved-notes').innerHTML = notesHTML;
 }
@@ -139,17 +154,20 @@ function getHumidityDescription(humidity) {
 
 function saveNote() {
     const note = document.getElementById('note-input').value;
+    if (!note.trim()) return;
     let notes = JSON.parse(localStorage.getItem('ducks-sake-notes') || '[]');
     notes.push(note);
     localStorage.setItem('ducks-sake-notes', JSON.stringify(notes));
     
     let notesHTML = '';
     notes.forEach((n, i) => {
-        notesHTML += `<div style="margin-bottom: 15px; border-bottom: 2px dashed #0000ff; padding-bottom: 10px;">
-            <p>${n}</p>
-            <button onclick="exportNote(${i})">Export Note ${i+1}</button>
-            <button onclick="removeNote(${i})">Remove Note</button>
-        </div>`;
+        const rawNote = n;
+const parsedNote = (() => { try { return marked.parse(rawNote) } catch(e) { return rawNote } })();
+            notesHTML += `<div style="margin-bottom: 15px; border-bottom: 2px dashed #0000ff; padding-bottom: 10px;">
+                <div>${parsedNote}</div>
+                <button onclick="exportNote(${i})">Export Note ${i+1}</button>
+                <button onclick="removeNote(${i})">Remove Note</button>
+            </div>`;
     });
     document.getElementById('saved-notes').innerHTML = notesHTML;
 }
@@ -233,62 +251,127 @@ function toggleDuckMode() {
     }
 }
 
-// News API functionality
-async function fetchNews() {
-    const newsDataElement = document.getElementById('news-data');
-    newsDataElement.innerHTML = '<div class="loading-message">🦆 Quacking up some fresh news...</div>'; // Improved loading message
-    
+// News functionality with caching and fallbacks
+const NEWS_CACHE_TIME = 3600000; // 1 hour
+const RSS_FEEDS = {
+    general: 'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml',
+    business: 'https://rss.nytimes.com/services/xml/rss/nyt/Business.xml',
+    entertainment: 'https://rss.nytimes.com/services/xml/rss/nyt/Arts.xml',
+    health: 'https://rss.nytimes.com/services/xml/rss/nyt/Health.xml',
+    science: 'https://rss.nytimes.com/services/xml/rss/nyt/Science.xml',
+    sports: 'https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml',
+    technology: 'http://feeds.bbci.co.uk/news/technology/rss.xml'
+};
+
+async function fetchNews(category = 'general') {
     try {
-        let category = document.getElementById('news-source').value;
-        const subreddit = category === 'general' ? 'news' : category; // Map 'general' to 'news'
-        const response = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=5`);
+        const cacheKey = `ducks-news-${category}`;
+        const cached = localStorage.getItem(cacheKey);
         
-        if (!response.ok) {
-            // Provide more specific error based on status
-            throw new Error(`Failed to fetch news (HTTP ${response.status})`);
+        if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            if (Date.now() - timestamp < NEWS_CACHE_TIME) {
+                displayNews(data);
+                return;
+            }
         }
-        
-        const data = await response.json();
 
-        if (!data?.data?.children?.length) {
-            newsDataElement.innerHTML = '<div class="error-message">No duck-worthy news found in this category! Try another.</div>';
-            return;
+        // Try NYTimes API first
+        const apiResponse = await fetch(
+            `https://api.nytimes.com/svc/topstories/v2/${category}.json?api-key=${window.NEWS_API_KEY}`
+        );
+        
+        if (!apiResponse.ok) throw new Error('API failed');
+        const apiData = await apiResponse.json();
+        const cleanData = apiData.results.slice(0, 7).map(item => ({
+            title: item.title,
+            url: item.url,
+            abstract: item.abstract,
+            date: item.published_date
+        }));
+        
+        localStorage.setItem(cacheKey, JSON.stringify({
+            data: cleanData,
+            timestamp: Date.now()
+        }));
+        displayNews(cleanData);
+    } catch (apiError) {
+        console.log('API failed, trying RSS fallback');
+        try {
+            const rssResponse = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${RSS_FEEDS[category]}`);
+            const rssData = await rssResponse.json();
+            displayNews(rssData.items.slice(0, 5));
+        } catch (rssError) {
+            displayNewsError(`Duck news failure: ${rssError.message}`);
         }
-        
-        // Use a container for better structure
-        let newsHTML = '<div class="news-list-header" style="font-style: italic; margin-bottom: 10px;">Latest headlines:</div><ul class="news-list">'; 
-        
-        data.data.children.slice(0, 5).forEach((post) => {
-            if (!post?.data?.title || !post?.data?.permalink) return; // Skip posts without title or link
-
-            const title = post.data.title;
-            const link = `https://reddit.com${post.data.permalink}`;
-            // Use selftext only if available, limit length
-            const description = post.data.selftext ? post.data.selftext.substring(0, 150) + (post.data.selftext.length > 150 ? '...' : '') : '';
-            const upvotes = post.data.ups || 0;
-            const subredditName = post.data.subreddit || 'unknown';
-
-            // Use list items for better semantics and add classes for potential styling
-            newsHTML += `
-                <li class="news-item" style="margin-bottom: 15px; border-bottom: 1px dashed ${document.body.classList.contains('duck-dark-mode') ? '#ff9900' : '#0000ff'}; padding-bottom: 10px;">
-                    <a href="${link}" target="_blank" class="news-title" style="color: ${document.body.classList.contains('duck-dark-mode') ? '#ff9900' : '#0000ff'}; display: block; margin-bottom: 5px; font-weight: bold;">${title}</a>
-                    ${description ? `<p class="news-description" style="font-size: 0.9em; margin: 5px 0;">${description}</p>` : ''}
-                    <p class="news-meta" style="font-size: 0.8em; color: #666;">${upvotes} upvotes • r/${subredditName}</p>
-                </li>`;
-        });
-        
-        newsHTML += '</ul>'; // Close the list
-        
-        newsDataElement.innerHTML = newsHTML;
-    } catch (error) {
-        console.error('News fetch error:', error);
-        // Display a user-friendly error message
-        newsDataElement.innerHTML = `<div class="error-message" style="color: #ff0000; font-weight: bold;">Failed to get news: ${error.message}. Please try again later or check the console.</div>`;
     }
 }
 
-// Initial news load on page ready
-document.addEventListener('DOMContentLoaded', fetchNews);
+function displayNews(items) {
+    const newsHTML = items.map((item, index) => `
+        <div class="news-item" style="transform: rotate(${index % 2 ? '-' : ''}1deg);">
+            <a href="${item.url}" class="news-title" target="_blank">
+                ${item.title || 'Untitled News'}
+            </a>
+            ${item.abstract ? `<div class="news-description">${item.abstract}</div>` : ''}
+            <div class="news-meta">
+                ${item.date ? new Date(item.date).toLocaleDateString() : ''}
+            </div>
+        </div>
+    `).join('');
+    
+    document.getElementById('news-data').innerHTML = newsHTML;
+}
+
+function displayNewsError(message) {
+    document.getElementById('news-data').innerHTML = `
+        <div class="error-message">
+            🦆 QUACK! ${message}<br>
+            Try refreshing or check your internet connection!
+        </div>
+    `;
+}
+
+let currentCategory = 'general';
+
+function handleCategoryClick(category, event) {
+    document.querySelectorAll('.news-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    currentCategory = category;
+    fetchNews();
+}
+
+// News functionality
+async function fetchNews() {
+    try {
+        document.getElementById('news-data').innerHTML = '<div class="loading-message">🦆 Ducking through news...</div>';
+        const response = await fetch(`https://newsapi.org/v2/top-headlines?country=us&category=${currentCategory}&pageSize=5&apiKey=${window.NEWS_API_KEY}`);
+        const data = await response.json();
+        
+        let newsHTML = '<div class="news-list-header">Latest Quacks in ' + currentCategory.toUpperCase() + '</div>';
+        newsHTML += '<ul class="news-list">';
+        data.articles.slice(0, 5).forEach(article => {
+            newsHTML += `<li style="margin-bottom: 15px; border-bottom: 1px dashed #ff9900; padding-bottom: 10px;">
+                <a href="${article.url}" target="_blank" style="color: #0000ff; text-decoration: underline wavy;">
+                    ${article.title}
+                </a>
+                <p>${article.description || ''}</p>
+            </li>`;
+        });
+        newsHTML += '</ul>';
+        document.getElementById('news-data').innerHTML = newsHTML;
+    } catch (error) {
+        document.getElementById('news-data').innerHTML = 
+            `<div class="error-message">Quack! News retrieval failed: ${error.message}</div>`;
+    }
+}
+
+// Auto-load news on page load
+window.addEventListener('load', () => {
+    document.querySelector('.news-btn').classList.add('active');
+    fetchNews();
+    setInterval(fetchNews, 300000); // 5min refresh
+});
 
 // Duck Mode toggle
 function toggleDuckMode() {
@@ -345,15 +428,17 @@ function toggleDuckMode() {
 
 // Load saved note on page load
 window.onload = function() {
-    const savedNotes = JSON.parse(localStorage.getItem('ducks-sake-notes') || '[]');
+    const savedNotes = JSON.parse(localStorage.getItem('ducks-sake-notes') || '[]').filter(n => n.trim());
     if (savedNotes.length > 0) {
         let notesHTML = '';
         savedNotes.forEach((n, i) => {
-            notesHTML += `<div style="margin-bottom: 15px; border-bottom: 2px dashed #0000ff; padding-bottom: 10px;">
-                <p>${marked.parse(n)}</p>
-                <button onclick="exportNote(${i})">Export Note ${i+1}</button>
-                <button onclick="removeNote(${i})">Remove Note</button>
-            </div>`;
+            const rawNote = n;
+const parsedNote = (() => { try { return marked.parse(rawNote) } catch(e) { return rawNote } })();
+                notesHTML += '<div style="margin-bottom: 15px; border-bottom: 2px dashed #0000ff; padding-bottom: 10px;">'
+                    + '<div>' + parsedNote + '</div>'
+                    + `<button onclick="exportNote(${i})">Export Note ${i+1}</button>`
+                    + `<button onclick="removeNote(${i})">Remove Note</button>`
+                    + '</div>';
         });
         document.getElementById('saved-notes').innerHTML = notesHTML;
     }

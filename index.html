@@ -52,22 +52,25 @@
         <div class="widget" id="news">
             <h2>News</h2>
             <div style="margin-bottom: 10px;">
-                <select id="news-source" onchange="fetchNews()" style="transform: rotate(-2deg); padding: 5px; border: 2px dashed #ff9900;">
-                    <option value="general">General</option>
-                    <option value="business">Business</option>
-                    <option value="entertainment">Entertainment</option>
-                    <option value="health">Health</option>
-                    <option value="science">Science</option>
-                    <option value="sports">Sports</option>
-                    <option value="technology">Technology</option>
-                </select>
-                <button onclick="fetchNews()" style="transform: rotate(2deg); background-color: #ff9900; border: 2px dashed #000;">Quack News</button>
+                <div id="news-buttons" class="news-buttons-container">
+                    <button class="news-btn" onclick="handleCategoryClick('general', event)" style=" background: #00ffff; border: 2px dashed #ff0000;">General</button>
+                    <button class="news-btn" onclick="handleCategoryClick('business', event)" style=" background: #ff99ff; border: 3px dotted #00ff00;">Business</button>
+                    <button class="news-btn" onclick="handleCategoryClick('entertainment', event)" style=" background: #ffff00; border: 2px wavy #ff00ff;">Entertainment</button>
+                    <button class="news-btn" onclick="handleCategoryClick('health', event)" style=" background: #99ff99; border: 4px double #0000ff;">Health</button>
+                    <button class="news-btn" onclick="handleCategoryClick('science', event)" style=" background: #ffcc00; border: 2px groove #ff0000;">Science</button>
+                    <button class="news-btn" onclick="handleCategoryClick('sports', event)" style=" background: #00ffcc; border: 2px ridge #ff9900;">Sports</button>
+                    <button class="news-btn" onclick="handleCategoryClick('technology', event)" style=" background: #cc99ff; border: 2px dashed #00ffff;">Tech</button>
+                </div>
+                
             </div>
             <div id="news-data">Loading news...</div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        window.NEWS_API_KEY = '5d9391f9378c4d93bd4a6732ac38ca83'; // Replace with user's actual key
+    </script>
     <script src="script.js"></script>
     <script>
         // Weather functionality

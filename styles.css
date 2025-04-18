@@ -1,0 +1,170 @@
+body {
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    background-color: #ff00ff;
+    color: #00ff00;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    margin: 40px 0 20px;
+}
+.widget {
+    width: calc(100% - 40px);
+    margin: 0 auto;
+    min-height: 200px;
+    background-color: #ffff00;
+    border: 5px dashed #0000ff;
+    padding: 30px;
+    transform: rotate(2deg);
+    box-shadow: 0 0 15px rgba(0,0,0,0.4);
+    margin-bottom: 20px;
+}
+.widget:nth-child(even) {
+    transform: rotate(-2deg);
+}
+h1, h2 {
+    text-decoration: underline wavy;
+}
+button {
+    background-color: #00ffff;
+    border: 3px solid #ff0000;
+    padding: 10px;
+    margin: 5px;
+}
+
+.news-btn.active {
+    transform: rotate(5deg) scale(1.1);
+    box-shadow: 0 0 15px currentColor;
+    border: 3px solid #000;
+}
+
+/* News Section Styling */
+.loading-message,
+.error-message {
+    font-style: italic;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 2px dashed #ff9900; /* Duck theme color */
+    background-color: rgba(255, 153, 0, 0.1); /* Light orange background */
+    transform: rotate(-1deg); /* Slight tilt */
+}
+
+.error-message {
+    color: #ff0000; /* Red for errors */
+    font-weight: bold;
+    background-color: rgba(255, 0, 0, 0.1);
+}
+
+.news-list-header {
+    font-weight: bold;
+    text-decoration: underline dotted;
+    margin-bottom: 15px;
+}
+
+.news-list {
+    list-style: none; /* Remove default bullet points */
+    padding: 0;
+}
+
+.news-item {
+    padding: 10px;
+    margin-bottom: 15px;
+    border-bottom: 2px dashed #0000ff; /* Default border */
+    transition: transform 0.2s ease-in-out;
+}
+
+.news-item:hover {
+    transform: scale(1.02) rotate(1deg); /* Subtle hover effect */
+}
+
+.news-title {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+    color: #0000ff; /* Default link color */
+    text-decoration: none;
+}
+
+.news-title:hover {
+    text-decoration: underline wavy;
+}
+
+.news-description {
+    font-size: 0.9em;
+    margin: 5px 0;
+    color: #333; /* Slightly darker text for description */
+}
+
+.news-meta {
+    font-size: 0.8em;
+    color: #555; /* Grey for metadata */
+    margin-top: 8px;
+}
+
+/* Dark Mode adjustments for News */
+body.duck-dark-mode .news-item {
+    border-bottom-color: #ff9900;
+}
+
+body.duck-dark-mode .news-title {
+    color: #ff9900;
+}
+
+body.duck-dark-mode .news-description {
+    color: #ccc;
+}
+
+body.duck-dark-mode .news-meta {
+    color: #aaa;
+}
+
+body.duck-dark-mode .loading-message,
+/* Style the news category dropdown */
+#news-category {
+    background-color: #00ffff; /* Light mode background */
+    border: 3px solid #ff0000; /* Light mode border */
+    color: #000000; /* Light mode text */
+    padding: 8px;
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    transform: rotate(-1deg); /* Slight tilt */
+    margin-left: 10px; /* Add some space */
+}
+
+/* Dark mode style for the dropdown */
+body.duck-dark-mode #news-category {
+    background-color: #ff9900; /* Dark mode background */
+    border-color: #ffffff; /* Dark mode border */
+    color: #000000; /* Dark mode text */
+}
+
+body.duck-dark-mode .error-message {
+    border-color: #ff9900;
+    color: #eee; /* Lighter text for dark mode */
+}
+
+/* Style the news category dropdown */
+#news-category {
+    background-color: #00ffff; /* Light mode background */
+    border: 3px solid #ff0000; /* Light mode border */
+    color: #000000; /* Light mode text */
+    padding: 8px;
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    transform: rotate(-1deg); /* Slight tilt */
+    margin-left: 10px; /* Add some space */
+}
+
+/* Dark mode style for the dropdown */
+body.duck-dark-mode #news-category {
+    background-color: #ff9900; /* Dark mode background */
+    border-color: #ffffff; /* Dark mode border */
+    color: #000000; /* Dark mode text */
+}
+
+body.duck-dark-mode .error-message {
+    color: #ff6666; /* Lighter red for dark mode errors */
+    background-color: rgba(255, 102, 102, 0.2);
+}

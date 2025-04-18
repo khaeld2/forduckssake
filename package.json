@@ -1,7 +1,8 @@
 {
   "name": "ducks-sake",
   "version": "1.0.0",
-  "description": "A chaotic webapp with weather, notes, and news",
+  "description": "A chaotic duck-themed webapp with weather, notes, and news",
+  "author": "Khaled Eldahshan",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

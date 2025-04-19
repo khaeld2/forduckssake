@@ -265,38 +265,26 @@ const RSS_FEEDS = {
 
 async function fetchNews(category = 'general') {
     try {
-        const cacheKey = `ducks-news-${category}`;
-        const cached = localStorage.getItem(cacheKey);
+        document.getElementById('news-data').innerHTML = '<div class="loading-message">🦆 Ducking through news...</div>';
         
-        if (cached) {
-            const { data, timestamp } = JSON.parse(cached);
-            if (Date.now() - timestamp < NEWS_CACHE_TIME) {
-                displayNews(data);
-                return;
-            }
-        }
-
-        // Try NYTimes API first
-        const apiResponse = await fetch(
-            `https://api.nytimes.com/svc/topstories/v2/${category}.json?api-key=${window.NEWS_API_KEY}`
-        );
+        // First try NewsAPI
+        const response = await fetch(`https://newsapi.org/v2/top-headlines?country=us&category=${category}&pageSize=5&apiKey=${window.NEWS_API_KEY}`);
+        const data = await response.json();
         
-        if (!apiResponse.ok) throw new Error('API failed');
-        const apiData = await apiResponse.json();
-        const cleanData = apiData.results.slice(0, 7).map(item => ({
-            title: item.title,
-            url: item.url,
-            abstract: item.abstract,
-            date: item.published_date
-        }));
-        
-        localStorage.setItem(cacheKey, JSON.stringify({
-            data: cleanData,
-            timestamp: Date.now()
-        }));
-        displayNews(cleanData);
+        let newsHTML = '<div class="news-list-header">Latest Quacks in ' + category.toUpperCase() + '</div>';
+        newsHTML += '<ul class="news-list">';
+        data.articles.slice(0, 5).forEach(article => {
+            newsHTML += `<li style="margin-bottom: 15px; border-bottom: 1px dashed #ff9900; padding-bottom: 10px;">
+                <a href="${article.url}" target="_blank" style="color: #0000ff; text-decoration: underline wavy;">
+                    ${article.title}
+                </a>
+                <p>${article.description || ''}</p>
+            </li>`;
+        });
+        newsHTML += '</ul>';
+        document.getElementById('news-data').innerHTML = newsHTML;
     } catch (apiError) {
-        console.log('API failed, trying RSS fallback');
+        console.log('NewsAPI failed, trying RSS fallback');
         try {
             const rssResponse = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${RSS_FEEDS[category]}`);
             const rssData = await rssResponse.json();
@@ -324,6 +312,7 @@ function displayNews(items) {
 }
 
 function displayNewsError(message) {
+    console.error('News display error:', message);
     document.getElementById('news-data').innerHTML = `
         <div class="error-message">
             🦆 QUACK! ${message}<br>

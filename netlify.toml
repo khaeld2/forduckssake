@@ -1,3 +1,6 @@
 [build]
   command = "npm run build"
   publish = "dist"
+
+[context.production.environment]
+  NEWS_API_KEY = "5d9391f9378c4d93bd4a6732ac38ca83"
